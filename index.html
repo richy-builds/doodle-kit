@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Say Cheese</title>
+<style>
+  body{margin:0;background:#1a1816;color:#eee;font:14px/1.4 system-ui,sans-serif;display:grid;place-items:center;align-content:center;min-height:100vh;gap:14px;padding:16px;box-sizing:border-box}
+  body.capture{padding:0;min-height:0;display:block;background:#000}
+  body.capture .bar{display:none}
+  canvas{display:block;max-width:min(92vw,760px);width:100%;height:auto;border-radius:14px;box-shadow:0 20px 60px #000a}
+  body.capture canvas{max-width:none;width:1080px;height:1080px;border-radius:0;box-shadow:none}
+  .bar{display:flex;gap:10px;align-items:center}
+  button{background:#2c2a28;border:1px solid #555;color:#eee;padding:8px 14px;border-radius:8px;cursor:pointer;font:inherit}
+  button:hover{background:#3a3734}
+  .hint{opacity:.55;font-size:12px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1080"></canvas>
+<div class="bar"><button id="replay">Replay</button><span class="hint">15 s loop · run <code>npm run render</code> for the mp4</span></div>
+<script src="doodle.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "say-cheese-doodle",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render.mjs",
+    "stills": "node render.mjs --stills",
+    "preview": "open index.html"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}
