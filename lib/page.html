@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>doodle</title>
+<style>
+  body{margin:0;background:#1a1816;color:#eee;font:14px/1.4 system-ui,sans-serif;display:grid;place-items:center;align-content:center;min-height:100vh;gap:14px;padding:16px;box-sizing:border-box}
+  body.capture{padding:0;min-height:0;display:block;background:#000}
+  body.capture .bar{display:none}
+  canvas{display:block;max-width:min(92vw,760px);width:100%;height:auto;border-radius:14px;box-shadow:0 20px 60px #000a}
+  body.capture canvas{max-width:none;border-radius:0;box-shadow:none}
+  .bar{display:flex;gap:10px;align-items:center;width:min(92vw,760px)}
+  button{background:#2c2a28;border:1px solid #555;color:#eee;padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit;min-width:40px}
+  button:hover{background:#3a3734}
+  input[type=range]{flex:1}
+  .t{font-variant-numeric:tabular-nums;min-width:9ch;text-align:right}
+  .hint{opacity:.55;font-size:12px}
+  .err{color:#f88;white-space:pre-wrap;max-width:760px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="bar">
+  <button id="play" title="space">⏸</button>
+  <button id="back" title="←">−1f</button>
+  <button id="fwd" title="→">+1f</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.001" value="0">
+  <span class="t" id="time">0.00 s</span>
+  <button id="replay">Replay</button>
+</div>
+<div class="hint" id="hint"></div>
+<script type="module">
+import { mount, photo } from './engine.js';
+const q = new URLSearchParams(location.search);
+const name = q.get('scene') || 'say-cheese', capture = q.has('capture'), FPS = 30;
+if (capture) document.body.classList.add('capture');
+window.ready = false;
+try {
+  const base = `../scenes/${name}/`;
+  const scene = (await import(base + 'scene.js')).default;
+  document.title = scene.title || name;
+  const canvas = document.getElementById('c');
+  const { render, renderMotion, duration } = await mount(scene, canvas, base);
+  await document.fonts.ready;
+  Object.assign(window, { render, renderMotion, duration, photo });
+  if (capture) { canvas.style.width = canvas.style.height = canvas.width + 'px'; window.ready = true; }
+  else {
+    // ---- live preview: play / pause / scrub / step, ?t=5.2 opens paused there ----
+    const $ = id => document.getElementById(id);
+    const scrub = $('scrub'), timeEl = $('time'), play = $('play');
+    scrub.max = duration;
+    $('hint').textContent = `${name} · ${duration} s loop · space play/pause · ← → step · npm run render -- ${name}`;
+    let t = q.has('t') ? clamp(+q.get('t')) : 0, playing = !q.has('t'), last = performance.now();
+    function clamp(v) { return Math.max(0, Math.min(duration - 1 / FPS, v)); }
+    function show() { render(t); scrub.value = t; timeEl.textContent = t.toFixed(2) + ' s'; play.textContent = playing ? '⏸' : '▶'; }
+    function tick(now) { if (playing) { t = (t + (now - last) / 1000) % duration; show(); } last = now; requestAnimationFrame(tick); }
+    const step = n => { playing = false; t = clamp(Math.round(t * FPS + n) / FPS); show(); };
+    play.onclick = () => { playing = !playing; show(); };
+    $('back').onclick = () => step(-1); $('fwd').onclick = () => step(1);
+    $('replay').onclick = () => { t = 0; playing = true; show(); };
+    scrub.oninput = () => { playing = false; t = +scrub.value; show(); };
+    addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' && e.key !== ' ') return;
+      if (e.key === ' ') { e.preventDefault(); play.onclick(); }
+      else if (e.key === 'ArrowLeft') step(e.shiftKey ? -FPS : -1);
+      else if (e.key === 'ArrowRight') step(e.shiftKey ? FPS : 1);
+    });
+    show(); requestAnimationFrame(tick);
+    window.ready = true;
+  }
+} catch (e) {
+  const d = document.createElement('div'); d.className = 'err'; d.textContent = e.stack || String(e);
+  document.body.append(d); window.ready = true; throw e;
+}
+</script>
+</body>
+</html>

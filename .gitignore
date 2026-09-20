@@ -1,3 +1,4 @@
 node_modules
 out
 .kilo
+.DS_Store

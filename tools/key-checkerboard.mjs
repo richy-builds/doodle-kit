@@ -1,12 +1,21 @@
-// Removes a baked-in transparency checkerboard (white / light-grey squares)
-// by flood-filling "background-coloured" pixels from the image border.
-// Usage: ffmpeg -i in.jpg -f rawvideo -pix_fmt rgb24 in.rgb
-//        node tools/key-checkerboard.mjs in.rgb out.rgba 1300 1300
-//        ffmpeg -f rawvideo -pix_fmt rgba -s 1300x1300 -i out.rgba -frames:v 1 photo.png
+// Turns a stock "cutout" that has a baked-in transparency checkerboard (white /
+// light-grey squares) into a real alpha PNG, by flood-filling background-coloured
+// pixels from the image border and feathering the edge.
+//   node tools/key-checkerboard.mjs in.jpg scenes/<name>/photo.png
+// Needs ffmpeg + ffprobe on PATH (raw RGB in, raw RGBA out).
 import fs from 'node:fs';
-const [src, dst, w, h] = process.argv.slice(2);
-const W = +w, H = +h, N = W * H;
-const b = fs.readFileSync(src);
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+const [src, dst] = process.argv.slice(2);
+if (!src || !dst) { console.error('usage: node tools/key-checkerboard.mjs in.jpg out.png'); process.exit(1); }
+const [W, H] = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', src])
+  .toString().trim().split(',').map(Number);
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'key-')), rgb = path.join(tmp, 'in.rgb'), rgba = path.join(tmp, 'out.rgba');
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', src, '-f', 'rawvideo', '-pix_fmt', 'rgb24', rgb]);
+
+const N = W * H, b = fs.readFileSync(rgb);
 const isBg = i => b[i*3] >= 222 && Math.abs(b[i*3] - b[i*3+1]) < 10 && Math.abs(b[i*3+1] - b[i*3+2]) < 10;
 const fill = new Uint8Array(N), q = new Int32Array(N);
 let qh = 0, qt = 0;
@@ -32,4 +41,7 @@ for (let i = 0; i < N; i++) {
   }
   out[i*4] = b[i*3]; out[i*4+1] = b[i*3+1]; out[i*4+2] = b[i*3+2]; out[i*4+3] = a;
 }
-fs.writeFileSync(dst, out);
+fs.writeFileSync(rgba, out);
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-i', rgba, '-frames:v', '1', dst]);
+fs.rmSync(tmp, { recursive: true, force: true });
+console.log(`keyed ${W}x${H} → ${dst}`);

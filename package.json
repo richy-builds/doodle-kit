@@ -1,11 +1,15 @@
 {
-  "name": "say-cheese-doodle",
+  "name": "doodle-kit",
   "private": true,
   "type": "module",
   "scripts": {
-    "render": "node render.mjs",
-    "stills": "node render.mjs --stills",
-    "preview": "open index.html"
+    "preview": "node tools/serve.mjs",
+    "render": "node tools/render.mjs",
+    "stills": "node tools/render.mjs --stills",
+    "sheet": "node tools/render.mjs --sheet",
+    "motion": "node tools/render.mjs --motion",
+    "frame": "node tools/render.mjs --t",
+    "key": "node tools/key-checkerboard.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"
